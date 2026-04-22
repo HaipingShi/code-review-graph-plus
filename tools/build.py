@@ -157,12 +157,12 @@ def _compute_summaries(store: Any) -> None:
         edge_counts: dict[str, int] = defaultdict(int)
         for row in conn.execute(
             "SELECT source_qualified, COUNT(*) FROM edges "
-            "GROUP BY source_qualified"
+            "WHERE kind != 'TESTED_BY' GROUP BY source_qualified"
         ):
             edge_counts[row[0]] += row[1]
         for row in conn.execute(
             "SELECT target_qualified, COUNT(*) FROM edges "
-            "GROUP BY target_qualified"
+            "WHERE kind != 'TESTED_BY' GROUP BY target_qualified"
         ):
             edge_counts[row[0]] += row[1]
 
@@ -318,7 +318,7 @@ def _compute_summaries(store: Any) -> None:
 
         risk_nodes = conn.execute(
             "SELECT id, qualified_name, name FROM nodes "
-            "WHERE kind IN ('Function', 'Class', 'Test')"
+            "WHERE kind IN ('Function', 'Class')"
         ).fetchall()
         security_kw = {
             "auth", "login", "password", "token", "session", "crypt",
