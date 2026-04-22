@@ -11,22 +11,26 @@ from .graph import GraphStore, _sanitize_name
 logger = logging.getLogger(__name__)
 
 
+def _production_nodes_and_edges(
+    store: GraphStore,
+) -> tuple[list[GraphNode], list]:
+    """Return production-only nodes and edges for analysis."""
+    return store.get_production_nodes(), store.get_production_edges()
+
+
 def find_hub_nodes(store: GraphStore, top_n: int = 10) -> list[dict]:
     """Find the most connected nodes (highest in+out degree), excluding File nodes.
 
     Returns list of dicts with: name, qualified_name, kind, file,
     in_degree, out_degree, total_degree, community_id
     """
-    # Build degree counts from all edges
-    edges = store.get_all_edges()
+    # Build degree counts from production edges
+    nodes, edges = _production_nodes_and_edges(store)
     in_degree: dict[str, int] = Counter()
     out_degree: dict[str, int] = Counter()
     for e in edges:
         out_degree[e.source_qualified] += 1
         in_degree[e.target_qualified] += 1
-
-    # Get all non-File nodes
-    nodes = store.get_all_nodes(exclude_files=True)
     community_map = store.get_all_community_ids()
 
     scored = []
@@ -66,8 +70,13 @@ def find_bridge_nodes(
     """
     import networkx as nx
 
-    # Build the graph — use cached version if available
-    nxg = store._build_networkx_graph()
+    # Build graph from production nodes/edges only
+    nodes, edges = _production_nodes_and_edges(store)
+    nxg = nx.Graph()
+    for n in nodes:
+        nxg.add_node(n.qualified_name)
+    for e in edges:
+        nxg.add_edge(e.source_qualified, e.target_qualified)
 
     # Compute betweenness centrality (approximate for large graphs)
     n_nodes = nxg.number_of_nodes()
@@ -81,10 +90,7 @@ def find_bridge_nodes(
         return []
 
     community_map = store.get_all_community_ids()
-    node_map = {
-        n.qualified_name: n
-        for n in store.get_all_nodes(exclude_files=True)
-    }
+    node_map = {n.qualified_name: n for n in nodes}
 
     results = []
     for qn, score in bc.items():
@@ -115,8 +121,7 @@ def find_knowledge_gaps(store: GraphStore) -> dict[str, list[dict]]:
     - untested_hotspots: high-degree nodes with no TESTED_BY edges
     - single_file_communities: entire community in one file
     """
-    edges = store.get_all_edges()
-    nodes = store.get_all_nodes(exclude_files=True)
+    nodes, edges = _production_nodes_and_edges(store)
     community_map = store.get_all_community_ids()
 
     # Build degree map
@@ -209,8 +214,7 @@ def find_surprising_connections(
     - Cross-file-type: test calling production or vice versa
     - Non-standard edge kind for the node types
     """
-    edges = store.get_all_edges()
-    nodes = store.get_all_nodes(exclude_files=True)
+    nodes, edges = _production_nodes_and_edges(store)
     community_map = store.get_all_community_ids()
 
     node_map = {n.qualified_name: n for n in nodes}
