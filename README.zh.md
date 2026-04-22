@@ -24,13 +24,13 @@
 
 ---
 
-## 可视化效果
+## 架构概览
 
-基于本项目真实构建结果（55 个文件、569 个节点、5489 条边、43 个社区）生成的交互式架构图：
+基于真实构建结果的简洁层级视图（55 文件 / 569 节点 / 5,489 边 / 43 社区）：
 
-[<img src="docs/images/graph-viz.png" alt="code-review-graph-plus 可视化" width="100%">](docs/code-review-graph-viz.html)
+[<img src="docs/images/architecture-overview.png" alt="code-review-graph-plus 架构" width="100%">](docs/architecture-overview.html)
 
-> 点击上方图片查看交互式可视化（支持缩放、拖拽、节点过滤）。运行 `code-review-graph-plus visualize` 即可为你的项目生成同类图表。
+> 点击上方图片查看可交互版本。运行 `code-review-graph-plus visualize` 可生成本项目的完整交互式图谱。
 
 ---
 
