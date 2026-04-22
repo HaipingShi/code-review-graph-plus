@@ -21,6 +21,7 @@ from .prompts import (
 )
 from .tools import (
     apply_refactor_func,
+    audit_security_flows_func,
     build_or_update_graph,
     compare_snapshots,
     cross_repo_search_func,
@@ -40,8 +41,11 @@ from .tools import (
     get_knowledge_gaps_func,
     get_minimal_context,
     get_review_context,
+    get_security_critical_flows_func,
+    get_security_nodes_func,
     get_suggested_questions_func,
     get_surprising_connections_func,
+    get_unprotected_paths_func,
     get_wiki_page_func,
     traverse_graph_func,
     list_communities_func,
@@ -936,6 +940,94 @@ def compare_snapshots_tool(
     return compare_snapshots(
         snapshot_a_id=snapshot_a_id,
         snapshot_b_id=snapshot_b_id,
+        repo_root=_resolve_repo_root(repo_root),
+    )
+
+
+@mcp.tool()
+def audit_security_flows_tool(
+    max_path_depth: int = 6,
+    limit_flows: int = 20,
+    repo_root: Optional[str] = None,
+) -> dict:
+    """Run a comprehensive security data-flow audit.
+
+    Identifies sensitive-data sources (e.g. get_password, generate_token),
+    sinks (e.g. log, send_response), and traces paths between them. Flags
+    unprotected paths where sensitive data reaches a sink without passing
+    through a security transform (encrypt, hash, sanitize).
+
+    Returns a risk score, classified nodes, unprotected paths, and
+    actionable recommendations.
+
+    Args:
+        max_path_depth: Max BFS depth for path tracing. Default: 6.
+        limit_flows: Max security-critical flows to return. Default: 20.
+        repo_root: Repository root path. Auto-detected if omitted.
+    """
+    return audit_security_flows_func(
+        max_path_depth=max_path_depth,
+        limit_flows=limit_flows,
+        repo_root=_resolve_repo_root(repo_root),
+    )
+
+
+@mcp.tool()
+def get_security_nodes_tool(
+    repo_root: Optional[str] = None,
+) -> dict:
+    """List all security-classified nodes in the graph.
+
+    Categorizes functions and classes by security role:
+    - sources: produce sensitive data (passwords, tokens, secrets)
+    - sinks: may leak sensitive data (log, send, save)
+    - transforms: reduce sensitivity (encrypt, hash, sanitize)
+    - checks: validate/authenticate (verify, check_permission)
+
+    Args:
+        repo_root: Repository root path. Auto-detected if omitted.
+    """
+    return get_security_nodes_func(repo_root=_resolve_repo_root(repo_root))
+
+
+@mcp.tool()
+def get_unprotected_paths_tool(
+    max_depth: int = 6,
+    repo_root: Optional[str] = None,
+) -> dict:
+    """Find unprotected data paths from sensitive sources to sinks.
+
+    A path is "unprotected" if sensitive data can flow from a source
+    (e.g. get_password) to a sink (e.g. log, send_response) without
+    passing through a security transform (encrypt, hash, sanitize).
+
+    Args:
+        max_depth: Max BFS depth for path tracing. Default: 6.
+        repo_root: Repository root path. Auto-detected if omitted.
+    """
+    return get_unprotected_paths_func(
+        max_depth=max_depth,
+        repo_root=_resolve_repo_root(repo_root),
+    )
+
+
+@mcp.tool()
+def get_security_critical_flows_tool(
+    limit: int = 20,
+    repo_root: Optional[str] = None,
+) -> dict:
+    """List execution flows containing security-sensitive nodes.
+
+    Returns stored execution flows (from flow detection) that pass through
+    any security-classified node (source, sink, transform, or check).
+    Useful for understanding which user-facing paths touch security logic.
+
+    Args:
+        limit: Maximum flows to return. Default: 20.
+        repo_root: Repository root path. Auto-detected if omitted.
+    """
+    return get_security_critical_flows_func(
+        limit=limit,
         repo_root=_resolve_repo_root(repo_root),
     )
 

@@ -103,6 +103,14 @@ from .review import (
 # -- trends_tools -----------------------------------------------------------
 from .trends_tools import compare_snapshots, get_debt_trends
 
+# -- security_audit_tools ---------------------------------------------------
+from .security_audit_tools import (
+    audit_security_flows_func,
+    get_security_critical_flows_func,
+    get_security_nodes_func,
+    get_unprotected_paths_func,
+)
+
 __all__ = [
     # _common
     "_BUILTIN_CALL_NAMES",
@@ -151,6 +159,11 @@ __all__ = [
     # trends_tools
     "get_debt_trends",
     "compare_snapshots",
+    # security_audit_tools
+    "audit_security_flows_func",
+    "get_security_nodes_func",
+    "get_unprotected_paths_func",
+    "get_security_critical_flows_func",
     # re-exported for backward compat (used in test patches)
     "get_changed_files",
     "get_staged_and_unstaged",
