@@ -1,0 +1,160 @@
+--- /tmp/crg-original/original/code_review_graph/communities.py	2020-02-02 00:00:00
++++ /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/code_review_graph/communities.py	2026-04-16 07:02:40
+@@ -43,13 +43,41 @@
+ 
+ # Common words to filter when generating community names
+ _COMMON_WORDS = frozenset({
++    # Original set
+     "get", "set", "self", "init", "new", "create", "update", "delete",
+     "add", "remove", "make", "build", "from", "to", "for", "with",
+     "the", "and", "test", "main", "run", "do", "is", "has", "on",
+     "of", "in", "at", "by", "my", "this", "that", "all", "none",
++    # Common value/variable names that pollute keyword extraction
++    "no", "dict", "load", "safe", "done", "data", "info", "value",
++    "result", "name", "key", "type", "item", "node", "edge",
++    "true", "false", "null", "cls", "obj", "args", "kwargs",
++    # Generic programming words
++    "handle", "check", "process", "calc", "tmp", "temp", "out",
++    "put", "err", "msg", "str", "int", "len", "idx", "num",
++    "cnt", "buf", "src", "dst", "fmt", "count", "index",
++    # Common verbs
++    "can", "may", "use", "call", "try", "go", "return", "print",
++    "read", "write", "open", "close", "start", "stop", "end",
++    "begin", "parse", "validate", "convert", "transform",
++    "default", "base", "core", "util", "helper", "common",
++    "config", "option", "param", "arg", "input", "output",
+ })
+ 
++# Generic directory names to skip when extracting file prefixes
++_GENERIC_DIR_NAMES = frozenset({
++    "src", "lib", "pkg", "source", "sources", "root", "app",
++    "tests", "test", "spec", "specs", "__tests__",
++})
+ 
++# Known abbreviations that are meaningful even when short (≤3 chars)
++_KNOWN_ABBREVIATIONS = frozenset({
++    "api", "cli", "gui", "html", "css", "xml", "sql", "db",
++    "rpc", "dns", "url", "uri", "http", "tls", "ssl", "ssh",
++    "tcp", "udp", "ipc", "csv", "json", "yaml", "io", "ui",
++})
++
++
+ # ---------------------------------------------------------------------------
+ # Community naming
+ # ---------------------------------------------------------------------------
+@@ -59,19 +87,35 @@
+     """Generate a meaningful name for a community of nodes.
+ 
+     Algorithm:
+-    1. Find most common module/file prefix among members
+-    2. If a dominant class exists (>40% of nodes), use its name
+-    3. Fallback: most frequent keyword in function/class names
+-    4. Format: "{prefix}-{keyword}"
++    1. Test-dominated (>60% Tests) → "{prefix}-tests"
++    2. Function-dominated (>60%) → prefer directory name, keyword only if substantive
++    3. Dominant class (>40%) → "{prefix}-{class}"
++    4. Fallback: most frequent keyword → "{prefix}-{keyword}"
++    5. Short-word rejection: keywords ≤3 chars (unless known abbreviation) are skipped
+     """
+     if not members:
+         return "empty"
+ 
+-    # 1. Find common file prefix
+     file_paths = [m.file_path for m in members]
+     prefix = _extract_file_prefix(file_paths)
+ 
+-    # 2. Check for dominant class
++    # Heuristic 1: Test-dominated community
++    test_count = sum(1 for m in members if m.kind == "Test")
++    if test_count > len(members) * 0.6:
++        if prefix:
++            return f"{prefix}-tests"
++        return "tests"
++
++    # Heuristic 2: Function-dominated — prefer directory context
++    func_count = sum(1 for m in members if m.kind == "Function")
++    if func_count > len(members) * 0.6 and prefix:
++        keywords = _extract_keywords(members)
++        keyword = keywords[0] if keywords else ""
++        if keyword and (len(keyword) > 3 or keyword in _KNOWN_ABBREVIATIONS):
++            return f"{prefix}-{keyword}"
++        return prefix
++
++    # Check for dominant class (>40% of nodes)
+     class_names = [m.name for m in members if m.kind == "Class"]
+     if class_names:
+         class_counts = Counter(class_names)
+@@ -81,10 +125,14 @@
+                 return f"{prefix}-{_to_slug(top_class)}"
+             return _to_slug(top_class)
+ 
+-    # 3. Most frequent keyword from function/class names
++    # Fallback: most frequent keyword from names
+     keywords = _extract_keywords(members)
+     keyword = keywords[0] if keywords else ""
+ 
++    # Heuristic 3: Reject short generic keywords
++    if keyword and len(keyword) <= 3 and keyword not in _KNOWN_ABBREVIATIONS:
++        keyword = ""
++
+     if prefix and keyword:
+         return f"{prefix}-{keyword}"
+     if prefix:
+@@ -95,20 +143,26 @@
+ 
+ 
+ def _extract_file_prefix(file_paths: list[str]) -> str:
+-    """Find the most common short directory or module name from file paths."""
++    """Find the most common meaningful directory/module name from file paths.
++
++    Walks backward through path segments, skipping generic directory names
++    (src, lib, tests, etc.) to find the first meaningful component.
++    """
+     if not file_paths:
+         return ""
+-    # Extract the parent directory or file stem
+     parts: list[str] = []
+     for fp in file_paths:
+-        # Use the last directory component or file stem
+         segments = fp.replace("\\", "/").split("/")
+-        # Take the parent dir if it exists, otherwise the file stem
+-        if len(segments) >= 2:
+-            parts.append(segments[-2])
+-        else:
+-            stem = segments[-1].rsplit(".", 1)[0]
+-            parts.append(stem)
++        # Walk backward through directory segments, skip generic names
++        candidate = ""
++        for i in range(len(segments) - 2, -1, -1):
++            seg = segments[i]
++            if seg.lower() not in _GENERIC_DIR_NAMES:
++                candidate = seg
++                break
++        if not candidate:
++            candidate = segments[-1].rsplit(".", 1)[0]
++        parts.append(candidate)
+ 
+     counts = Counter(parts)
+     top_part, _ = counts.most_common(1)[0]
+@@ -116,15 +170,19 @@
+ 
+ 
+ def _extract_keywords(members: list[GraphNode]) -> list[str]:
+-    """Extract the most frequent meaningful keywords from member names."""
++    """Extract the most frequent meaningful keywords from member names.
++
++    Class names are weighted 3x since they represent domain concepts.
++    """
+     word_counts: Counter[str] = Counter()
+     for m in members:
+         if m.kind in ("Function", "Class", "Test", "Type"):
+             words = _split_name(m.name)
++            weight = 3 if m.kind == "Class" else 1
+             for w in words:
+                 wl = w.lower()
+                 if wl not in _COMMON_WORDS and len(wl) > 1:
+-                    word_counts[wl] += 1
++                    word_counts[wl] += weight
+ 
+     if not word_counts:
+         return []

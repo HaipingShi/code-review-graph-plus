@@ -1,0 +1,367 @@
+--- /tmp/crg-original/original/code_review_graph/wiki.py	2020-02-02 00:00:00
++++ /opt/homebrew/Caskroom/miniconda/base/lib/python3.13/site-packages/code_review_graph/wiki.py	2026-04-16 07:05:35
+@@ -26,15 +26,53 @@
+     return slug[:80] or "unnamed"
+ 
+ 
+-def _generate_community_page(store: GraphStore, community: dict[str, Any]) -> str:
++def _build_qn_to_community_map(
++    store: GraphStore,
++) -> dict[str, tuple[str, str]]:
++    """Build a mapping from qualified_name to (community_name, slug).
++
++    Used for cross-referencing in dependency sections of wiki pages.
++    """
++    qn_to_cid = store.get_all_community_ids()
++    if not qn_to_cid:
++        return {}
++
++    # Build community_id -> (name, slug) map
++    cid_to_name: dict[int, tuple[str, str]] = {}
++    try:
++        rows = store._conn.execute(
++            "SELECT id, name FROM communities"
++        ).fetchall()
++        for row in rows:
++            cid_to_name[row["id"]] = (
++                _sanitize_name(row["name"]),
++                _slugify(row["name"]),
++            )
++    except sqlite3.OperationalError:
++        return {}
++
++    result: dict[str, tuple[str, str]] = {}
++    for qn, cid in qn_to_cid.items():
++        if cid is not None and cid in cid_to_name:
++            result[qn] = cid_to_name[cid]
++    return result
++
++
++def _generate_community_page(
++    store: GraphStore,
++    community: dict[str, Any],
++    qn_to_community: dict[str, tuple[str, str]] | None = None,
++) -> str:
+     """Build markdown content for a single community.
+ 
+-    Includes: heading, overview (size, cohesion, language), members table
+-    (top 50), execution flows through the community, and dependencies.
++    Includes: heading, overview, grouped members (by kind), key symbols,
++    file listing, execution flows, and cross-community dependencies.
+ 
+     Args:
+         store: The graph store.
+         community: Community dict from get_communities().
++        qn_to_community: Mapping from qualified_name to (name, slug) for
++            cross-referencing dependencies.
+ 
+     Returns:
+         Markdown string for the community page.
+@@ -45,6 +83,16 @@
+     lang = community.get("dominant_language", "")
+     description = community.get("description", "")
+ 
++    # Use raw QNs for DB queries (community["members"] are sanitized)
++    comm_id = community.get("id")
++    raw_qns: list[str] = []
++    if comm_id is not None:
++        try:
++            raw_qns = store.get_community_member_qns(comm_id)
++        except sqlite3.OperationalError:
++            pass
++    member_set = set(raw_qns) if raw_qns else set(community.get("members", []))
++
+     lines: list[str] = []
+     lines.append(f"# {name}")
+     lines.append("")
+@@ -61,48 +109,117 @@
+         lines.append(f"- **Dominant Language**: {lang}")
+     lines.append("")
+ 
+-    # Members table (top 50)
+-    member_qns = community.get("members", [])
++    # Members section -- grouped by Kind
+     lines.append("## Members")
+     lines.append("")
+-    if member_qns:
+-        lines.append("| Name | Kind | File | Lines |")
+-        lines.append("|------|------|------|-------|")
++    if raw_qns:
++        classes: list[tuple[str, str, str]] = []
++        functions: list[tuple[str, str, str]] = []
++        tests: list[tuple[str, str, str]] = []
++        other: list[tuple[str, str, str]] = []
+ 
+-        # Fetch node details for members (limit to 50)
+-        member_count = 0
+-        for qn in member_qns[:50]:
++        for qn in raw_qns:
+             node = store.get_node(qn)
+             if node and node.kind != "File":
+-                node_name = _sanitize_name(node.name)
+-                lines.append(
+-                    f"| {node_name} | {node.kind} | {node.file_path} "
+-                    f"| {node.line_start}-{node.line_end} |"
++                entry = (
++                    _sanitize_name(node.name),
++                    node.file_path,
++                    f"{node.line_start}-{node.line_end}",
+                 )
+-                member_count += 1
++                if node.kind == "Class":
++                    classes.append(entry)
++                elif node.kind == "Function":
++                    functions.append(entry)
++                elif node.kind == "Test":
++                    tests.append(entry)
++                else:
++                    other.append(entry)
+ 
+-        if not member_count:
+-            # Remove the table headers if no members were added
+-            lines.pop()  # header separator
+-            lines.pop()  # header
+-            lines.append("No non-file members found.")
+-
+-        if len(member_qns) > 50:
++        def _render_group(title: str, items: list, limit: int = 20) -> None:
++            if not items:
++                return
++            lines.append(f"### {title} ({len(items)})")
+             lines.append("")
+-            lines.append(f"*... and {len(member_qns) - 50} more members.*")
++            lines.append("| Name | File | Lines |")
++            lines.append("|------|------|-------|")
++            for item_name, item_file, item_lines in items[:limit]:
++                lines.append(f"| {item_name} | {item_file} | {item_lines} |")
++            if len(items) > limit:
++                lines.append("")
++                lines.append(f"*... and {len(items) - limit} more.*")
++            lines.append("")
++
++        _render_group("Classes", classes, 20)
++        _render_group("Functions", functions, 20)
++        _render_group("Tests", tests, 20)
++        if other:
++            _render_group("Other", other, 10)
++
++        if not classes and not functions and not tests and not other:
++            lines.append("No non-file members found.")
+     else:
+         lines.append("No members found.")
+     lines.append("")
+ 
++    # Key Symbols section (most-connected internal nodes)
++    lines.append("## Key Symbols")
++    lines.append("")
++    if raw_qns:
++        edge_counts: Counter[str] = Counter()
++        for t in store.get_outgoing_targets(list(member_set)):
++            if t in member_set:
++                edge_counts[t] += 1
++        for s in store.get_incoming_sources(list(member_set)):
++            if s in member_set:
++                edge_counts[s] += 1
++
++        hubs = edge_counts.most_common(10)
++        if hubs:
++            lines.append("| Symbol | Internal Connections |")
++            lines.append("|--------|---------------------|")
++            for qn, count in hubs:
++                node = store.get_node(qn)
++                sym_name = _sanitize_name(node.name) if node else _sanitize_name(qn)
++                lines.append(f"| {sym_name} | {count} |")
++            lines.append("")
++        else:
++            lines.append("No highly-connected symbols identified.")
++            lines.append("")
++    else:
++        lines.append("No members to analyze.")
++        lines.append("")
++
++    # Files section
++    lines.append("## Files")
++    lines.append("")
++    if raw_qns:
++        file_set: set[str] = set()
++        for qn in raw_qns:
++            node = store.get_node(qn)
++            if node:
++                file_set.add(node.file_path)
++
++        if file_set:
++            sorted_files = sorted(file_set)[:20]
++            for f in sorted_files:
++                lines.append(f"- `{f}`")
++            if len(file_set) > 20:
++                lines.append(f"- *... and {len(file_set) - 20} more files.*")
++            lines.append("")
++        else:
++            lines.append("No files identified.")
++            lines.append("")
++    else:
++        lines.append("No members to list files for.")
++        lines.append("")
++
+     # Execution flows through community
+     lines.append("## Execution Flows")
+     lines.append("")
+-    member_set = set(member_qns)
+     try:
+         all_flows = get_flows(store, sort_by="criticality", limit=200)
+         community_flows: list[dict] = []
+         for flow in all_flows:
+-            # Check if this flow passes through any community member
+             flow_qns = store.get_flow_qualified_names(flow["id"])
+             if flow_qns & member_set:
+                 community_flows.append(flow)
+@@ -124,37 +241,42 @@
+         lines.append("Execution flow data not available.")
+     lines.append("")
+ 
+-    # Dependencies (cross-community edges)
++    # Dependencies (cross-community edges) with community name resolution
+     lines.append("## Dependencies")
+     lines.append("")
+     try:
+         outgoing_targets: Counter[str] = Counter()
+         incoming_sources: Counter[str] = Counter()
+-        if member_qns:
+-            qns = list(member_qns)
+-
+-            # Outgoing: source is a member
+-            for t in store.get_outgoing_targets(qns):
++        if raw_qns:
++            for t in store.get_outgoing_targets(list(member_set)):
+                 if t not in member_set:
+                     outgoing_targets[t] += 1
+-
+-            # Incoming: target is a member
+-            for s in store.get_incoming_sources(qns):
++            for s in store.get_incoming_sources(list(member_set)):
+                 if s not in member_set:
+                     incoming_sources[s] += 1
+ 
++        def _format_dep(qn: str, count: int) -> str:
++            """Format a dependency with community cross-reference if available."""
++            dep_name = _sanitize_name(qn.split("::")[-1])
++            if qn_to_community and qn in qn_to_community:
++                comm_name, comm_slug = qn_to_community[qn]
++                return (
++                    f"- `{dep_name}` → [{comm_name}]({comm_slug}.md) ({count} edge(s))"
++                )
++            return f"- `{dep_name}` ({count} edge(s))"
++
+         if outgoing_targets:
+             lines.append("### Outgoing")
+             lines.append("")
+             for target, count in outgoing_targets.most_common(15):
+-                lines.append(f"- `{_sanitize_name(target)}` ({count} edge(s))")
++                lines.append(_format_dep(target, count))
+             lines.append("")
+ 
+         if incoming_sources:
+             lines.append("### Incoming")
+             lines.append("")
+             for source, count in incoming_sources.most_common(15):
+-                lines.append(f"- `{_sanitize_name(source)}` ({count} edge(s))")
++                lines.append(_format_dep(source, count))
+             lines.append("")
+ 
+         if not outgoing_targets and not incoming_sources:
+@@ -191,11 +313,14 @@
+ 
+     communities = get_communities(store)
+ 
++    # Build community cross-reference map once for all pages
++    qn_to_community = _build_qn_to_community_map(store)
++
+     pages_generated = 0
+     pages_updated = 0
+     pages_unchanged = 0
+ 
+-    page_entries: list[tuple[str, str, int]] = []  # (slug, name, size)
++    page_entries: list[tuple[str, str, int, str]] = []  # (slug, name, size, desc)
+ 
+     # Track slugs we've already used in THIS run so two communities that
+     # slugify to the same filename don't overwrite each other (#222 follow-up).
+@@ -218,13 +343,13 @@
+         filename = f"{slug}.md"
+         filepath = wiki_path / filename
+ 
+-        content = _generate_community_page(store, comm)
++        content = _generate_community_page(store, comm, qn_to_community)
+ 
+         if filepath.exists() and not force:
+             existing = filepath.read_text(encoding="utf-8")
+             if existing == content:
+                 pages_unchanged += 1
+-                page_entries.append((slug, name, comm["size"]))
++                page_entries.append((slug, name, comm["size"], comm.get("description", "")))
+                 continue
+ 
+         already_existed = filepath.exists()
+@@ -233,7 +358,7 @@
+             pages_updated += 1
+         else:
+             pages_generated += 1
+-        page_entries.append((slug, name, comm["size"]))
++        page_entries.append((slug, name, comm["size"], comm.get("description", "")))
+ 
+     # Generate index.md
+     index_lines: list[str] = []
+@@ -243,14 +368,48 @@
+         "Auto-generated documentation from the code knowledge graph community structure."
+     )
+     index_lines.append("")
+-    index_lines.append(f"**Total communities**: {len(communities)}")
+-    index_lines.append("")
++
++    # Graph statistics section
++    try:
++        stats_row = store._conn.execute(
++            "SELECT COUNT(*) as cnt FROM nodes WHERE kind != 'File'"
++        ).fetchone()
++        edge_row = store._conn.execute(
++            "SELECT COUNT(*) as cnt FROM edges"
++        ).fetchone()
++        lang_rows = store._conn.execute(
++            "SELECT DISTINCT language FROM nodes "
++            "WHERE language IS NOT NULL AND language != ''"
++        ).fetchall()
++
++        total_nodes = stats_row["cnt"] if stats_row else 0
++        total_edges = edge_row["cnt"] if edge_row else 0
++        languages = ", ".join(sorted(r["language"] for r in lang_rows))
++
++        index_lines.append("## Graph Statistics")
++        index_lines.append("")
++        index_lines.append(f"- **Total Nodes**: {total_nodes}")
++        index_lines.append(f"- **Total Edges**: {total_edges}")
++        if languages:
++            index_lines.append(f"- **Languages**: {languages}")
++        index_lines.append(f"- **Communities**: {len(communities)}")
++        index_lines.append("")
++    except sqlite3.OperationalError:
++        index_lines.append(f"**Total communities**: {len(communities)}")
++        index_lines.append("")
++
+     index_lines.append("## Communities")
+     index_lines.append("")
+-    index_lines.append("| Community | Size | Link |")
+-    index_lines.append("|-----------|------|------|")
+-    for slug, name, size in sorted(page_entries, key=lambda x: x[1]):
+-        index_lines.append(f"| {name} | {size} | [{slug}.md]({slug}.md) |")
++    index_lines.append("| Community | Size | Description | Link |")
++    index_lines.append("|-----------|------|-------------|------|")
++    # Sort by size descending (largest first)
++    for slug, name, size, desc in sorted(
++        page_entries, key=lambda x: x[2], reverse=True
++    ):
++        short_desc = desc[:60] + "..." if len(desc) > 60 else desc
++        index_lines.append(
++            f"| {name} | {size} | {short_desc} | [{slug}.md]({slug}.md) |"
++        )
+     index_lines.append("")
+ 
+     index_content = "\n".join(index_lines)
