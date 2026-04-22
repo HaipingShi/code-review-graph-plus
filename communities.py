@@ -636,9 +636,9 @@ def detect_communities(
         List of community dicts with keys: name, level, size, cohesion,
         dominant_language, description, members, member_qns.
     """
-    # Gather all nodes (exclude File nodes to focus on code entities)
-    all_edges = store.get_all_edges()
-    unique_nodes = store.get_all_nodes(exclude_files=True)
+    # Gather production nodes (exclude File and Test nodes for architecture)
+    all_edges = store.get_production_edges()
+    unique_nodes = store.get_production_nodes()
 
     # Build adjacency index once for fast cohesion computation
     adj = _build_adjacency(all_edges)
