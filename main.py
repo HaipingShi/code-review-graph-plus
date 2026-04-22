@@ -22,6 +22,7 @@ from .prompts import (
 from .tools import (
     apply_refactor_func,
     build_or_update_graph,
+    compare_snapshots,
     cross_repo_search_func,
     detect_changes_func,
     embed_graph,
@@ -31,6 +32,7 @@ from .tools import (
     get_architecture_overview_func,
     get_bridge_nodes_func,
     get_community_func,
+    get_debt_trends,
     get_docs_section,
     get_flow,
     get_hub_nodes_func,
@@ -886,6 +888,56 @@ def pre_merge_check(base: str = "HEAD~1") -> list[dict]:
         base: Git ref to diff against. Default: HEAD~1.
     """
     return pre_merge_check_prompt(base=base)
+
+
+@mcp.tool()
+def get_debt_trends_tool(
+    metric: str = "all",
+    limit: int = 20,
+    include_alerts: bool = True,
+    repo_root: str = "",
+) -> dict:
+    """Retrieve architecture health trends over time.
+
+    Returns time-series data for tracked metrics (community count,
+    cohesion, coupling, etc.) and optional alerts based on thresholds
+    and trend detection.
+
+    Args:
+        metric: Metric to query. "all" returns all metrics.
+        limit: Number of recent snapshots (default: 20).
+        include_alerts: Include computed alerts (default: True).
+        repo_root: Repository root (auto-detected if empty).
+    """
+    return get_debt_trends(
+        metric=metric,
+        limit=limit,
+        include_alerts=include_alerts,
+        repo_root=_resolve_repo_root(repo_root),
+    )
+
+
+@mcp.tool()
+def compare_snapshots_tool(
+    snapshot_a_id: int,
+    snapshot_b_id: int | None = None,
+    repo_root: str = "",
+) -> dict:
+    """Compare two architecture snapshots.
+
+    Shows deltas for all tracked metrics (files, nodes, cohesion,
+    warnings, etc.) between two points in time.
+
+    Args:
+        snapshot_a_id: ID of the first (earlier) snapshot.
+        snapshot_b_id: ID of the second snapshot. Defaults to latest.
+        repo_root: Repository root (auto-detected if empty).
+    """
+    return compare_snapshots(
+        snapshot_a_id=snapshot_a_id,
+        snapshot_b_id=snapshot_b_id,
+        repo_root=_resolve_repo_root(repo_root),
+    )
 
 
 def main(repo_root: str | None = None) -> None:

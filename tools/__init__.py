@@ -100,6 +100,9 @@ from .review import (
     get_review_context,
 )
 
+# -- trends_tools -----------------------------------------------------------
+from .trends_tools import compare_snapshots, get_debt_trends
+
 __all__ = [
     # _common
     "_BUILTIN_CALL_NAMES",
@@ -145,6 +148,9 @@ __all__ = [
     "get_knowledge_gaps_func",
     "get_suggested_questions_func",
     "get_surprising_connections_func",
+    # trends_tools
+    "get_debt_trends",
+    "compare_snapshots",
     # re-exported for backward compat (used in test patches)
     "get_changed_files",
     "get_staged_and_unstaged",

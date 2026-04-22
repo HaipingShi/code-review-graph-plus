@@ -19,6 +19,7 @@ def _run_postprocess(
     postprocess: str,
     full_rebuild: bool = False,
     changed_files: list[str] | None = None,
+    repo_root: str | None = None,
 ) -> list[str]:
     """Run post-build steps based on *postprocess* level.
 
@@ -121,6 +122,16 @@ def _run_postprocess(
         "last_postprocessed_at", time.strftime("%Y-%m-%dT%H:%M:%S"),
     )
     store.set_metadata("postprocess_level", postprocess)
+
+    # -- Record architecture snapshot for trend tracking --
+    try:
+        from ..trends import record_snapshot as _record_snapshot
+
+        snapshot_id = _record_snapshot(store, repo_root=repo_root)
+        build_result["snapshot_id"] = snapshot_id
+    except Exception as e:
+        logger.warning("Snapshot recording failed: %s", e)
+        warnings.append(f"Snapshot recording failed: {type(e).__name__}: {e}")
 
     return warnings
 
@@ -423,6 +434,7 @@ def build_or_update_graph(
         warnings = _run_postprocess(
             store, build_result, postprocess,
             full_rebuild=full_rebuild, changed_files=changed,
+            repo_root=str(root),
         )
         if warnings:
             build_result["warnings"] = warnings
