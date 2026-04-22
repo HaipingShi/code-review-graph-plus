@@ -41,7 +41,7 @@ def _set_schema_version(conn: sqlite3.Connection, version: int) -> None:
 
 _KNOWN_TABLES = frozenset({
     "nodes", "edges", "metadata", "communities", "flows", "flow_memberships", "nodes_fts",
-    "community_summaries", "flow_snapshots", "risk_index",
+    "community_summaries", "flow_snapshots", "risk_index", "snapshots",
 })
 
 
@@ -238,6 +238,31 @@ def _migrate_v9(conn: sqlite3.Connection) -> None:
     logger.info("Migration v9: added edge confidence columns")
 
 
+def _migrate_v10(conn: sqlite3.Connection) -> None:
+    """v10: Create snapshots table for trend tracking."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            snapshot_at TEXT NOT NULL DEFAULT (datetime('now')),
+            commit_hash TEXT,
+            files_count INTEGER NOT NULL DEFAULT 0,
+            nodes_count INTEGER NOT NULL DEFAULT 0,
+            edges_count INTEGER NOT NULL DEFAULT 0,
+            communities_count INTEGER NOT NULL DEFAULT 0,
+            avg_cohesion REAL NOT NULL DEFAULT 0.0,
+            cross_community_edges INTEGER NOT NULL DEFAULT 0,
+            warnings_count INTEGER NOT NULL DEFAULT 0,
+            large_functions_count INTEGER NOT NULL DEFAULT 0,
+            avg_criticality REAL NOT NULL DEFAULT 0.0,
+            metrics_json TEXT DEFAULT '{}'
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_snapshots_at ON snapshots(snapshot_at DESC)"
+    )
+    logger.info("Migration v10: created snapshots table")
+
+
 # ---------------------------------------------------------------------------
 # Migration registry
 # ---------------------------------------------------------------------------
@@ -251,6 +276,7 @@ MIGRATIONS: dict[int, Callable[[sqlite3.Connection], None]] = {
     7: _migrate_v7,
     8: _migrate_v8,
     9: _migrate_v9,
+    10: _migrate_v10,
 }
 
 LATEST_VERSION = max(MIGRATIONS.keys())
