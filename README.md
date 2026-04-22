@@ -47,6 +47,7 @@ The AI answers instantly because it has 32 specialized tools querying a live gra
 | **Security audit** | Manual grep for `password`, `token`, `log` | Automatic source → sink path tracing with risk scoring |
 | **Refactoring** | Hope you didn't miss anything | AI highlights every affected function and dead code |
 | **Architecture health** | "Feels messy" | Quantified: cohesion, coupling, community fragmentation trends |
+| **Token cost** | Burn 5k–20k tokens per chat just explaining context | Zero context tokens — graph is pre-loaded |
 
 ---
 
