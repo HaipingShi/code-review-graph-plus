@@ -330,6 +330,13 @@ class GraphStore:
             rows = self._conn.execute("SELECT * FROM nodes").fetchall()
         return [self._row_to_node(r) for r in rows]
 
+    def get_production_nodes(self) -> list[GraphNode]:
+        """Return non-File, non-Test nodes for architectural analysis."""
+        return [
+            n for n in self.get_all_nodes(exclude_files=True)
+            if n.kind != "Test" and not n.is_test
+        ]
+
     def get_edges_by_source(self, qualified_name: str) -> list[GraphEdge]:
         rows = self._conn.execute(
             "SELECT * FROM edges WHERE source_qualified = ?", (qualified_name,)
@@ -1157,6 +1164,10 @@ class GraphStore:
         """Return all edges in the graph."""
         rows = self._conn.execute("SELECT * FROM edges").fetchall()
         return [self._row_to_edge(r) for r in rows]
+
+    def get_production_edges(self) -> list[GraphEdge]:
+        """Return all edges excluding TESTED_BY for architectural analysis."""
+        return [e for e in self.get_all_edges() if e.kind != "TESTED_BY"]
 
     def get_edges_among(self, qualified_names: set[str]) -> list[GraphEdge]:
         """Return edges where both source and target are in the given set.
