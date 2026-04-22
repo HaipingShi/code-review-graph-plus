@@ -4,64 +4,106 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Version](https://img.shields.io/badge/version-2.3.2--post1-orange)](https://github.com/HaipingShi/code-review-graph-plus)
 
-> 个人定制版 [code-review-graph](https://code-review-graph.com) v2.3.2，基于 AST 与调用关系构建代码知识图谱，提供 32+ MCP 工具用于架构分析、代码审查与安全审计。
->
-> [English](README.md) | **中文**
+**中文** | [English](README.md)
 
 ---
 
-## 与原版的区别
+## 别再一遍遍给 AI 解释你的代码了
 
-|特性|原版|本 fork|
+每次新开一个 Claude、Cursor 或其他 AI 助手的对话，你都要先花 20 分钟给它贴文件、讲架构、纠正误解。
+
+**code-review-graph-plus** 给你的代码库建一个**永久记忆图谱**——只需构建一次。之后每次 AI 对话都自带完整上下文：模块关系、调用链、安全风险、架构热点。
+
+不用再发"我给你看一下相关文件"。AI 已经知道了。
+
+---
+
+## 30 秒看懂它能做什么
+
+```bash
+pip install "git+https://github.com/HaipingShi/code-review-graph-plus.git"
+cd your-project
+code-review-graph-plus install   # 接入 Claude / Cursor / Windsurf
+code-review-graph-plus build     # 一次性扫描
+```
+
+现在在这个项目里打开任意 AI 对话。不用贴代码，直接问：
+
+- *"如果重构 `auth.py`，哪些函数会受影响？"*
+- *"找出所有密码未加密就写入日志的路径。"*
+- *"这个代码库里最关键的执行流是什么？"*
+- *"过去一个月我们的架构健康度是在变好还是变差？"*
+
+AI 能秒答，因为它有 32 个专业工具在实时查询你的代码图谱。
+
+---
+
+## 用了它之后有什么不一样
+
+| | **以前** | **现在** |
 |---|---|---|
-| 架构分析 | 包含测试代码 | **仅分析生产代码**，排除测试节点与 `TESTED_BY` 边 |
-| 技术债务追踪 | 无 | **趋势快照 + 阈值/趋势告警** |
-| 安全数据流审计 | 无 | **敏感数据源/汇聚点识别 + 未保护路径追踪** |
-| 社区命名 | 基础 | **增强停用词过滤 + 跨社区 Wiki 引用** |
-
-> [!IMPORTANT]
-> 测试代码仍保留在图谱中用于覆盖率报告，但不会出现在社区、热点、桥接点等架构指标中。这消除了"测试社区膨胀"和"跨社区边数虚高"的误报。
+| **新开 AI 对话** | 贴文件、讲架构、等 AI 慢慢理解 | AI 已经知道你的项目结构 |
+| **代码审查** | 一行行看 diff，猜副作用 | AI 自动追踪跨文件的调用影响链 |
+| **安全审计** | 手动 grep `password`、`token`、`log` | 自动追踪敏感数据从哪来、到哪去、有没有加密 |
+| **重构代码** | 祈祷没漏掉什么 | AI 标出所有受影响函数和死代码 |
+| **架构健康** | "感觉越来越乱了" | 量化指标：内聚度、耦合度、社区碎片化趋势 |
 
 ---
 
-## 架构概览
+## 核心能力
 
-基于真实构建结果的简洁层级视图（55 文件 / 569 节点 / 5,489 边 / 43 社区）：
+**🔍 让 AI 瞬间读懂项目**
+一次构建，AI 就掌握了整个代码库的结构——文件、类、函数、导入、调用关系。再也不用逐文件解释。
+
+**🛡️ 安全数据流审计**
+自动发现敏感数据（密码、Token、密钥）在哪里产生、在哪里可能泄露（日志、响应、文件）、路上有没有经过加密或脱敏。
+
+**📈 技术债务趋势追踪**
+每次构建后自动记录架构健康快照。追踪代码是在越来越凝聚还是越来越碎片化。在失控之前收到预警。
+
+**🏛️ 架构分析**
+自动识别代码社区、热点（连接最多的节点）、架构瓶颈和意外耦合——只分析生产代码，测试结果不会污染指标。
+
+---
+
+## 架构一览
+
+基于本项目真实构建结果（55 文件 / 569 节点 / 5,489 边 / 43 社区）：
 
 [<img src="docs/images/architecture-overview.png" alt="code-review-graph-plus 架构" width="100%">](docs/architecture-overview.html)
 
-> 点击上方图片查看可交互版本。运行 `code-review-graph-plus visualize` 可生成本项目的完整交互式图谱。
+> 点击上方图片查看可交互版本。运行 `code-review-graph-plus visualize` 即可为你的项目生成同类图表。
 
 ---
 
 ## 快速开始
 
 ```bash
-# 1. 安装 MCP 配置（自动识别 Claude/Cursor/Windsurf 等）
+# 1. 安装 MCP 配置（自动识别 Claude、Cursor、Windsurf 等）
 code-review-graph-plus install
 
-# 2. 注册项目
+# 2. 注册你的项目
 cd /path/to/your-project
 code-review-graph-plus register .
 
-# 3. 构建图谱
+# 3. 构建知识图谱（一次性，约 1-3 分钟）
 code-review-graph-plus build
 
 # 4. 查看状态
 code-review-graph-plus status
 ```
 
+完成。在这个项目里打开任意 AI 对话，直接问架构级别的问题。
+
 ---
 
 ## 安装
-
-### 从 GitHub 安装
 
 ```bash
 pip install "git+https://github.com/HaipingShi/code-review-graph-plus.git"
 ```
 
-### 开发模式
+开发模式：
 
 ```bash
 git clone https://github.com/HaipingShi/code-review-graph-plus.git
@@ -69,170 +111,82 @@ cd code-review-graph-plus
 pip install -e .
 ```
 
-### 依赖
+---
 
-核心依赖会自动安装：`tree-sitter-language-pack`、`networkx`、`igraph`、`fastmcp`。如需语义搜索，额外安装 `sentence-transformers`。
+## 与原版的区别
+
+| | 原版 | 本 fork |
+|---|---|---|
+| 架构分析 | 包含测试代码 | **仅分析生产代码**——测试不污染社区、热点等指标 |
+| 技术债务追踪 | 无 | **快照 + 阈值/趋势预警** |
+| 安全审计 | 无 | **自动源/汇聚点分类 + 未保护路径追踪** |
+| 社区命名 | 基础 | **增强停用词过滤 + 跨社区 Wiki 引用** |
 
 ---
 
-## CLI 命令
-
-| 命令 | 用途 |
-|------|------|
-| `install` / `init` | 注册 MCP 服务器到 AI 平台 |
-| `build` | 完整构建（重新解析所有文件） |
-| `update` | 增量更新（仅变更文件） |
-| `postprocess` | 不重新解析，仅重跑流程/社区/全文检索 |
-| `watch` | 监听文件变更自动更新 |
-| `status` | 查看图谱统计 |
-| `visualize` | 生成交互式 HTML 可视化 |
-| `wiki` | 生成 Markdown Wiki |
-| `register <path>` | 注册仓库到多仓库列表 |
-| `unregister <path>` | 从列表移除 |
-| `repos` | 列出已注册仓库 |
-| `detect-changes` | 分析变更影响范围 |
-| `serve` | 启动 MCP 服务器（stdio） |
-
----
-
-## MCP 工具（32 个）
+## MCP 工具一览（共 32 个）
 
 <details>
-<summary>🏗️ 构建与探索（6 个）</summary>
+<summary>🏗️ 构建与探索</summary>
 
-- `build_or_update_graph` — 完整或增量构建
-- `get_impact_radius` — 从变更文件计算影响范围
-- `query_graph` — 图谱遍历（调用方、被调用方、导入等）
-- `semantic_search_nodes` — 关键词 + 向量混合搜索
-- `list_graph_stats` — 聚合统计
-- `traverse_graph` — 带 Token 预算的 BFS/DFS 遍历
+`build_or_update_graph` · `get_impact_radius` · `query_graph` · `semantic_search_nodes` · `list_graph_stats` · `traverse_graph`
 
 </details>
 
 <details>
-<summary>🔍 审查与变更分析（3 个）</summary>
+<summary>🔍 审查与变更</summary>
 
-- `get_review_context` — 聚焦子图 + 源代码片段
-- `detect_changes` — 风险评分的变更影响分析
-- `get_affected_flows` — 查找受变更影响的执行流
+`get_review_context` · `detect_changes` · `get_affected_flows`
 
 </details>
 
 <details>
-<summary>🏛️ 架构分析（9 个）</summary>
+<summary>🏛️ 架构分析</summary>
 
-- `list_communities` — 检测到的代码社区
-- `get_community` — 单个社区详情
-- `get_architecture_overview` — 社区边界 + 耦合警告
-- `list_flows` / `get_flow` — 按关键性排序的执行流
-- `get_hub_nodes` — 连接最多的节点（热点）
-- `get_bridge_nodes` — 架构瓶颈
-- `get_knowledge_gaps` — 结构性弱点
-- `get_surprising_connections` — 意外耦合
-- `get_suggested_questions` — 自动生成的审查问题
+`list_communities` · `get_community` · `get_architecture_overview` · `list_flows` · `get_hub_nodes` · `get_bridge_nodes` · `get_knowledge_gaps` · `get_surprising_connections` · `get_suggested_questions`
 
 </details>
 
 <details>
-<summary>🔧 重构辅助（3 个）</summary>
+<summary>🔧 重构辅助</summary>
 
-- `refactor` — 重命名预览、死代码检测、建议
-- `apply_refactor` — 应用预览过的重构
-- `find_large_functions` — 超大函数/类
+`refactor` · `apply_refactor` · `find_large_functions`
 
 </details>
 
 <details>
-<summary>📚 知识与搜索（5 个）</summary>
+<summary>📚 知识与搜索</summary>
 
-- `embed_graph` — 计算向量嵌入
-- `generate_wiki` / `get_wiki_page` — 社区 Wiki
-- `get_docs_section` — Token 优化的文档检索
-- `cross_repo_search` — 跨仓库搜索
+`embed_graph` · `generate_wiki` · `get_wiki_page` · `get_docs_section` · `cross_repo_search`
 
 </details>
 
 <details>
-<summary>📈 趋势追踪（2 个）</summary>
+<summary>📈 趋势追踪</summary>
 
-- `get_debt_trends` — 架构健康度时间序列 + 告警
-- `compare_snapshots` — 两次构建的详细对比
+`get_debt_trends` · `compare_snapshots`
 
 </details>
 
 <details>
-<summary>🛡️ 安全审计（4 个）</summary>
+<summary>🛡️ 安全审计</summary>
 
-- `audit_security_flows` — 全面安全数据流审计
-- `get_security_nodes` — 安全分类节点列表（源/汇聚/变换/检查）
-- `get_unprotected_paths` — 查找敏感数据未保护路径
-- `get_security_critical_flows` — 经过安全逻辑的执行流
+`audit_security_flows` · `get_security_nodes` · `get_unprotected_paths` · `get_security_critical_flows`
 
 </details>
 
 ---
 
-## 功能详解
+## 适合谁用
 
-### 技术债务趋势追踪
-
-每次 `build` 或 `postprocess` 后自动记录架构快照。支持：
-
-- **时间序列趋势**：内聚度、耦合度、社区数量、大函数数量随时间变化
-- **阈值告警**：指标越过阈值时即时告警（如内聚度 < 0.2）
-- **趋势告警**：连续 3 次快照恶化时触发
-- **快照对比**：任意两次构建的前后差异
-
-```python
-from code_review_graph.trends import get_trend_data, compute_alerts
-from code_review_graph.tools._common import _get_store
-
-store, _ = _get_store("/path/to/repo")
-data = get_trend_data(store, "avg_cohesion", limit=20)
-alerts = compute_alerts(store)
-store.close()
-```
-
-### 安全数据流审计
-
-基于关键词自动分类敏感数据源、汇聚点、安全变换和校验节点，追踪未保护路径：
-
-```python
-from code_review_graph.security_audit import audit_security_flows
-from code_review_graph.tools._common import _get_store
-
-store, _ = _get_store("/path/to/repo")
-report = audit_security_flows(store)
-print(f"Risk: {report['risk_level']} ({report['risk_score']})")
-store.close()
-```
-
-> [!NOTE]
-> 分类基于函数/类名中的关键词片段（如 `get_password`、`hash_password`、`log_request`），并通过 `_name_segments()` 分词避免 `login` 误匹配 `log` 等 false positive。
-
----
-
-## 多仓库支持
-
-注册多个仓库并在它们之间切换：
-
-```bash
-code-review-graph-plus register ~/projects/project-a
-code-review-graph-plus register ~/projects/project-b
-code-review-graph-plus repos
-```
-
----
-
-## 精确修改记录
-
-从原版 v2.3.2 的变更详见 `MODIFICATIONS_*.diff`：
-
-- `MODIFICATIONS_communities.diff` — 增强社区命名
-- `MODIFICATIONS_wiki.diff` — 跨社区 Wiki 引用
+- **独立开发者**：在不同 AI 对话间切换，不想每次都重新介绍项目
+- **做代码审查的团队**：希望 AI 在提建议前先理解跨文件影响
+- **重构遗留代码的工程师**：在动手之前就知道会牵一发而动全身
+- **注重安全的团队**：想要自动化的数据流审计，不用手动 grep
+- **技术负责人**：想要可量化的架构健康度指标和趋势
 
 ---
 
 ## 许可证
 
-MIT（与原版相同）。详见 [LICENSE](LICENSE)。
+MIT。详见 [LICENSE](LICENSE)。
