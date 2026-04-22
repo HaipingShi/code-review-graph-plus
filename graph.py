@@ -1092,12 +1092,13 @@ class GraphStore:
 
     def get_communities_list(
         self,
-    ) -> list[sqlite3.Row]:
-        """Return raw rows from the ``communities`` table."""
+    ) -> list[dict[str, Any]]:
+        """Return rows from the ``communities`` table as dicts."""
         try:
-            return self._conn.execute(
-                "SELECT id, name FROM communities"
+            rows = self._conn.execute(
+                "SELECT * FROM communities"
             ).fetchall()
+            return [dict(r) for r in rows]
         except sqlite3.OperationalError as exc:
             # communities table doesn't exist yet on pre-v4 schemas
             logger.debug("Communities list unavailable (table missing): %s", exc)
