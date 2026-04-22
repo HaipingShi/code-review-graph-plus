@@ -20,7 +20,7 @@ def embed_graph(
 ) -> dict[str, Any]:
     """Compute vector embeddings for all graph nodes to enable semantic search.
 
-    Requires: ``pip install code-review-graph[embeddings]``
+    Requires: ``pip install code-review-graph-plus[embeddings]``
     Default model: all-MiniLM-L6-v2. Override via ``model`` param or
     CRG_EMBEDDING_MODEL env var.
     Changing the model re-embeds all nodes automatically.
@@ -45,7 +45,7 @@ def embed_graph(
                 "status": "error",
                 "error": (
                     "sentence-transformers is not installed. "
-                    "Install with: pip install code-review-graph[embeddings]"
+                    "Install with: pip install code-review-graph-plus[embeddings]"
                 ),
             }
 

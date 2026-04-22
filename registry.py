@@ -21,7 +21,7 @@ _REGISTRY_PATH = _REGISTRY_DIR / "registry.json"
 
 
 class Registry:
-    """Manages a JSON-based registry of code-review-graph repositories.
+    """Manages a JSON-based registry of code-review-graph-plus repositories.
 
     Each entry stores the repo path and an optional alias.
     The registry lives at ``~/.code-review-graph/registry.json``.

@@ -1,7 +1,7 @@
 """Claude Code skills and hooks auto-install.
 
 Generates Claude Code agent skill files, hooks configuration, and
-CLAUDE.md integration for seamless code-review-graph usage.
+CLAUDE.md integration for seamless code-review-graph-plus usage.
 Also supports multi-platform MCP server installation.
 """
 
@@ -116,11 +116,11 @@ def _build_server_entry(plat: dict[str, Any], key: str = "") -> dict[str, Any]:
     if shutil.which("uvx"):
         entry: dict[str, Any] = {
             "command": "uvx",
-            "args": ["code-review-graph", "serve"],
+            "args": ["code-review-graph-plus", "serve"],
         }
     else:
         entry = {
-            "command": "code-review-graph",
+            "command": "code-review-graph-plus",
             "args": ["serve"],
         }
     if plat["needs_type"]:
@@ -210,7 +210,7 @@ def install_platform_configs(
         if plat["format"] == "toml":
             changed = _merge_toml_mcp_server(
                 config_path,
-                "code-review-graph",
+                "code-review-graph-plus",
                 server_entry,
                 dry_run=dry_run,
             )
@@ -239,22 +239,22 @@ def install_platform_configs(
             if not isinstance(arr, list):
                 arr = []
             # Check if already present
-            if any(isinstance(s, dict) and s.get("name") == "code-review-graph" for s in arr):
+            if any(isinstance(s, dict) and s.get("name") == "code-review-graph-plus" for s in arr):
                 print(f"  {plat['name']}: already configured in {config_path}")
                 configured.append(plat["name"])
                 continue
-            arr_entry = {"name": "code-review-graph", **server_entry}
+            arr_entry = {"name": "code-review-graph-plus", **server_entry}
             arr.append(arr_entry)
             existing[server_key] = arr
         else:
             servers = existing.get(server_key, {})
             if not isinstance(servers, dict):
                 servers = {}
-            if "code-review-graph" in servers:
+            if "code-review-graph-plus" in servers:
                 print(f"  {plat['name']}: already configured in {config_path}")
                 configured.append(plat["name"])
                 continue
-            servers["code-review-graph"] = server_entry
+            servers["code-review-graph-plus"] = server_entry
             existing[server_key] = servers
 
         if dry_run:
@@ -277,7 +277,7 @@ _SKILLS: dict[str, dict[str, str]] = {
         "description": "Navigate and understand codebase structure using the knowledge graph",
         "body": (
             "## Explore Codebase\n\n"
-            "Use the code-review-graph MCP tools to explore and understand the codebase.\n\n"
+            "Use the code-review-graph-plus MCP tools to explore and understand the codebase.\n\n"
             "### Steps\n\n"
             "1. Run `list_graph_stats` to see overall codebase metrics.\n"
             "2. Run `get_architecture_overview` for high-level community structure.\n"
@@ -432,7 +432,7 @@ def generate_hooks_config() -> dict[str, Any]:
                     "hooks": [
                         {
                             "type": "command",
-                            "command": "code-review-graph update --skip-flows",
+                            "command": "code-review-graph-plus update --skip-flows",
                             "timeout": 30,
                         },
                     ],
@@ -444,7 +444,7 @@ def generate_hooks_config() -> dict[str, Any]:
                     "hooks": [
                         {
                             "type": "command",
-                            "command": "code-review-graph status",
+                            "command": "code-review-graph-plus status",
                             "timeout": 10,
                         },
                     ],
@@ -457,19 +457,19 @@ def generate_hooks_config() -> dict[str, Any]:
 def install_git_hook(repo_root: Path) -> Path | None:
     """Install a git pre-commit hook that prints a risk summary before each commit.
 
-    Called automatically by ``code-review-graph install``
+    Called automatically by ``code-review-graph-plus install``
     Creates ``.git/hooks/pre-commit`` if it doesn't exist, or appends to an
     existing one — preserving any hooks already there. Returns None when no
     ``.git`` directory is found.
     """
     script = """\
 #!/bin/sh
-# Installed by code-review-graph. Remove this file to disable pre-commit graph checks.
-if command -v code-review-graph >/dev/null 2>&1; then
-    code-review-graph detect-changes --brief || true
+# Installed by code-review-graph-plus. Remove this file to disable pre-commit graph checks.
+if command -v code-review-graph-plus >/dev/null 2>&1; then
+    code-review-graph-plus detect-changes --brief || true
 fi
 """
-    marker = "code-review-graph detect-changes"
+    marker = "code-review-graph-plus detect-changes"
 
     git_dir = repo_root / ".git"
     if not git_dir.is_dir():
@@ -519,13 +519,13 @@ def install_hooks(repo_root: Path) -> None:
     logger.info("Wrote hooks config: %s", settings_path)
 
 
-_CLAUDE_MD_SECTION_MARKER = "<!-- code-review-graph MCP tools -->"
+_CLAUDE_MD_SECTION_MARKER = "<!-- code-review-graph-plus MCP tools -->"
 
 _CLAUDE_MD_SECTION = f"""{_CLAUDE_MD_SECTION_MARKER}
-## MCP Tools: code-review-graph
+## MCP Tools: code-review-graph-plus
 
 **IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
+code-review-graph-plus MCP tools BEFORE using Grep/Glob/Read to explore
 the codebase.** The graph is faster, cheaper (fewer tokens), and gives
 you structural context (callers, dependents, test coverage) that file
 scanning cannot.
@@ -603,7 +603,7 @@ _PLATFORM_INSTRUCTION_FILES: dict[str, tuple[str, ...]] = {
     "GEMINI.md": ("antigravity",),
     ".cursorrules": ("cursor",),
     ".windsurfrules": ("windsurf",),
-    ".kiro/steering/code-review-graph.md": ("kiro",),
+    ".kiro/steering/code-review-graph-plus.md": ("kiro",),
 }
 
 

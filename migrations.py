@@ -1,4 +1,4 @@
-"""Schema migration framework for the code-review-graph SQLite database.
+"""Schema migration framework for the code-review-graph-plus SQLite database.
 
 Manages incremental schema changes via versioned migration functions.
 Each migration is idempotent (uses IF NOT EXISTS / column existence checks).

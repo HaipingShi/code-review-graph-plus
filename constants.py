@@ -1,4 +1,4 @@
-"""Shared constants for code-review-graph."""
+"""Shared constants for code-review-graph-plus."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 """MCP server entry point for Code Review Graph.
 
-Run as: code-review-graph serve
+Run as: code-review-graph-plus serve
 Communicates via stdio (standard MCP transport).
 """
 
@@ -68,7 +68,7 @@ def _resolve_repo_root(repo_root: Optional[str]) -> Optional[str]:
 
     Order of precedence:
     1. Explicit ``repo_root`` passed by the MCP client (highest).
-    2. ``--repo`` CLI flag passed to ``code-review-graph serve``
+    2. ``--repo`` CLI flag passed to ``code-review-graph-plus serve``
        (captured in ``_default_repo_root``).
     3. None — the underlying impl will fall back to the server's cwd.
 
@@ -80,7 +80,7 @@ def _resolve_repo_root(repo_root: Optional[str]) -> Optional[str]:
 
 
 mcp = FastMCP(
-    "code-review-graph",
+    "code-review-graph-plus",
     instructions=(
         "Persistent incremental knowledge graph for token-efficient, "
         "context-aware code reviews. Parses your codebase with Tree-sitter, "
@@ -309,7 +309,7 @@ async def embed_graph_tool(
 ) -> dict:
     """Compute vector embeddings for all graph nodes to enable semantic search.
 
-    Requires: pip install code-review-graph[embeddings]
+    Requires: pip install code-review-graph-plus[embeddings]
     Default model: all-MiniLM-L6-v2. Override via `model` param or
     CRG_EMBEDDING_MODEL env var (any sentence-transformers compatible model).
     Changing the model re-embeds all nodes automatically.

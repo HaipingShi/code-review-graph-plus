@@ -71,7 +71,7 @@ class LocalEmbeddingProvider(EmbeddingProvider):
             except ImportError:
                 raise ImportError(
                     "sentence-transformers not installed. "
-                    "Run: pip install code-review-graph[embeddings]"
+                    "Run: pip install code-review-graph-plus[embeddings]"
                 )
         return self._model
 
@@ -103,7 +103,7 @@ class GoogleEmbeddingProvider(EmbeddingProvider):
         except ImportError:
             raise ImportError(
                 "google-generativeai not installed. "
-                "Run: pip install code-review-graph[google-embeddings]"
+                "Run: pip install code-review-graph-plus[google-embeddings]"
             )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
@@ -262,7 +262,7 @@ def _warn_cloud_egress(provider_name: str) -> None:
     if os.environ.get("CRG_ACCEPT_CLOUD_EMBEDDINGS", "").strip() == "1":
         return
     print(
-        f"\n⚠️  code-review-graph: about to embed code via the '{provider_name}' "
+        f"\n⚠️  code-review-graph-plus: about to embed code via the '{provider_name}' "
         "cloud provider.\n"
         "    Your source code (function names, docstrings, file paths) will be "
         "sent to an external API.\n"

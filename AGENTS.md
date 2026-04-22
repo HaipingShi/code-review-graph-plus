@@ -1,4 +1,4 @@
-# Agent Guide: code-review-graph Fork
+# Agent Guide: code-review-graph-plus Fork
 
 > Quick orientation for LLMs working on this codebase.
 
@@ -11,7 +11,7 @@ A personal fork of [code-review-graph](https://code-review-graph.com) v2.3.2 —
 ## Architecture at a Glance
 
 ```
-CLI (code-review-graph)          MCP Server (stdio)
+CLI (code-review-graph-plus)          MCP Server (stdio)
     |                                    |
     v                                    v
 +----------+     +------------+     +------------+
@@ -55,7 +55,7 @@ Tree-sitter parser       |           |  analysis  |
 | `tools/analysis_tools.py` | Wrappers for analysis.py functions |
 | `tools/trends_tools.py` | `get_debt_trends`, `compare_snapshots` |
 | `tools/security_audit_tools.py` | `audit_security_flows`, `get_security_nodes`, `get_unprotected_paths`, `get_security_critical_flows` |
-| `cli.py` | CLI entry point (`code-review-graph build`, `register`, etc.) |
+| `cli.py` | CLI entry point (`code-review-graph-plus build`, `register`, etc.) |
 | `setup.py` | Package config. **Important:** uses `package_dir={"code_review_graph": "."}` because the directory is `code-review-graph` (hyphen) but Python package name must be `code_review_graph` (underscore). |
 
 ## Database Schema (Key Tables)
@@ -161,7 +161,7 @@ Nodes are classified by `_name_segments()` (splits on `_` and camelCase boundari
 ### "Build is failing / graph not found"
 
 - Graph DB lives at `<repo_root>/.code-review-graph/graph.db`.
-- Run `code-review-graph build` from the repo root, or call `build_or_update_graph_tool` via MCP.
+- Run `code-review-graph-plus build` from the repo root, or call `build_or_update_graph_tool` via MCP.
 - If `ModuleNotFoundError: No module named 'code_review_graph'`, reinstall: `pip install -e .` (the `setup.py` maps `code_review_graph` package to the current directory).
 
 ## Testing a Change Quickly

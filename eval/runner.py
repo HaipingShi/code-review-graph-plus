@@ -38,7 +38,7 @@ DEFAULT_REPOS = Path("evaluate/test_repos")
 
 def _require_yaml():
     if yaml is None:
-        raise ImportError("pyyaml is required: pip install code-review-graph[eval]")
+        raise ImportError("pyyaml is required: pip install code-review-graph-plus[eval]")
 
 
 def load_config(name: str) -> dict:

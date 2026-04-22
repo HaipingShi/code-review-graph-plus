@@ -1,4 +1,4 @@
-"""Evaluation framework for code-review-graph.
+"""Evaluation framework for code-review-graph-plus.
 
 Provides scoring metrics (token efficiency, MRR, precision/recall),
 benchmark runners, and report generators for benchmarking graph-based code reviews.
