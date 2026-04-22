@@ -24,21 +24,31 @@
 
 ---
 
+## 可视化效果
+
+基于本项目真实构建结果（55 个文件、569 个节点、5489 条边、43 个社区）生成的交互式架构图：
+
+[<img src="docs/images/graph-viz.png" alt="code-review-graph-plus visualization" width="100%">](docs/code-review-graph-viz.html)
+
+> 点击上方图片查看交互式可视化（支持缩放、拖拽、节点过滤）。运行 `code-review-graph-plus visualize` 即可为你的项目生成同类图表。
+
+---
+
 ## 快速开始
 
 ```bash
 # 1. 安装 MCP 配置（自动识别 Claude/Cursor/Windsurf 等）
-code-review-graph install
+code-review-graph-plus install
 
 # 2. 注册项目
 cd /path/to/your-project
-code-review-graph register .
+code-review-graph-plus register .
 
 # 3. 构建图谱
-code-review-graph build
+code-review-graph-plus build
 
 # 4. 查看状态
-code-review-graph status
+code-review-graph-plus status
 ```
 
 ---
@@ -207,9 +217,9 @@ store.close()
 注册多个仓库并在它们之间切换：
 
 ```bash
-code-review-graph register ~/projects/project-a
-code-review-graph register ~/projects/project-b
-code-review-graph repos
+code-review-graph-plus register ~/projects/project-a
+code-review-graph-plus register ~/projects/project-b
+code-review-graph-plus repos
 ```
 
 ---
